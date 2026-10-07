@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#111827">
+<title>Building Superintendent Pro</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f3f4f6;color:#111827}
+header{padding:16px 14px 10px;background:#111827;color:#fff;position:sticky;top:0;z-index:20;box-shadow:0 2px 8px #0002}
+h1{font-size:23px;margin:0 0 4px}.sub{font-size:12px;opacity:.75}
+.tabs{display:flex;gap:7px;overflow:auto;padding-top:12px}.tabs button{border:0;background:#374151;color:#fff;padding:9px 12px;border-radius:18px;white-space:nowrap;font-size:14px}.tabs button.active{background:#fff;color:#111827}
+main{padding:12px;max-width:760px;margin:auto}.section{display:block}.hidden{display:none}
+.card{background:#fff;border-radius:16px;padding:14px;margin-bottom:12px;box-shadow:0 1px 5px #00000012}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.stat b{font-size:24px;display:block}.stat small{color:#6b7280}
+input,select,textarea{width:100%;padding:11px;border:1px solid #d1d5db;border-radius:10px;font-size:16px;margin:5px 0 10px;background:#fff}
+textarea{min-height:85px;resize:vertical}label{font-size:12px;color:#4b5563;font-weight:700}
+button{font-family:inherit}.primary{background:#111827;color:#fff;border:0;border-radius:10px;padding:11px 15px;font-size:15px}.secondary{background:#e5e7eb;color:#111827;border:0;border-radius:10px;padding:10px 13px}.danger{background:#fee2e2;color:#b91c1c;border:0;border-radius:8px;padding:7px}.success{background:#dcfce7;color:#166534;border:0;border-radius:8px;padding:7px}
+.item{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid #eee;padding:12px 0}.item:first-child{border-top:0}
+.badge{font-size:11px;padding:5px 8px;border-radius:12px;background:#dcfce7;display:inline-block}.low{background:#fef3c7;color:#92400e}.out{background:#fee2e2;color:#991b1b}.blue{background:#dbeafe;color:#1d4ed8}.gray{background:#e5e7eb;color:#374151}
+.actions{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}.actions button{border:0;border-radius:7px;padding:7px;background:#e5e7eb}
+.muted{color:#6b7280}.empty{text-align:center;padding:18px;color:#6b7280}.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}.three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.search{margin-bottom:5px}.photo{max-width:100%;max-height:150px;border-radius:10px;margin-top:7px}
+h2,h3{margin-top:4px}.mini{font-size:12px;color:#6b7280}.dangerText{color:#b91c1c}
+@media(max-width:430px){.row,.three{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>🏢 Building Superintendent Pro</h1>
+<div class="sub">Inventory • Units • Maintenance • Work Orders • Suppliers</div>
+<div class="tabs">
+<button class="active" onclick="show('dashboard',this)">Dashboard</button>
+<button onclick="show('inventory',this)">Inventory</button>
+<button onclick="show('units',this)">Units</button>
+<button onclick="show('requests',this)">Requests</button>
+<button onclick="show('workorders',this)">Work Orders</button>
+<button onclick="show('suppliers',this)">Suppliers</button>
+<button onclick="show('add',this)">＋ Add</button>
+<button onclick="show('reports',this)">Reports</button>
+</div>
+</header>
+
+<main>
+<section id="dashboard">
+<div class="grid">
+<div class="card stat"><b id="total">0</b><small>Materials</small></div>
+<div class="card stat"><b id="low">0</b><small>Low Stock</small></div>
+<div class="card stat"><b id="openReq">0</b><small>Open Requests</small></div>
+<div class="card stat"><b id="openWO">0</b><small>Open Work Orders</small></div>
+</div>
+<div class="card"><h3>⚠️ Attention</h3><div id="attention"></div></div>
+<div class="card"><h3>🕒 Recent Activity</h3><div id="activity"></div></div>
+</section>
+
+<section id="inventory" class="hidden">
+<div class="card">
+<h3>📦 Inventory</h3>
+<input class="search" id="search" placeholder="🔎 Search materials..." oninput="render()">
+<div class="row"><select id="filter" onchange="render()"><option value="">All categories</option><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Painting</option><option>Drywall</option><option>Hardware</option><option>Cleaning</option><option>Safety</option><option>Tools</option><option>Other</option></select>
+<select id="stockFilter" onchange="render()"><option value="">All stock</option><option value="low">Low / Reorder</option><option value="out">Out of stock</option></select></div>
+<div id="items"></div>
+</div>
+</section>
+
+<section id="units" class="hidden">
+<div class="card"><h3>🏠 Building Units</h3>
+<input id="unitSearch" class="search" placeholder="🔎 Search unit, room, tenant..." oninput="render()">
+<div id="unitList"></div></div>
+</section>
+
+<section id="requests" class="hidden">
+<div class="card"><h3>🛠 Maintenance Requests</h3>
+<div class="three"><input id="reqUnit" placeholder="Unit # (e.g. 305)"><input id="reqRoom" placeholder="Room # / Area"><input id="reqTenant" placeholder="Tenant / contact"></div>
+<input id="reqTitle" placeholder="Problem / request">
+<select id="reqPriority"><option>Normal</option><option>Urgent</option><option>Emergency</option></select>
+<textarea id="reqNotes" placeholder="Details..."></textarea>
+<button class="primary" onclick="addRequest()">Create Request</button>
+</div>
+<div class="card">
+<h3>🔎 Find Unit / Room Request</h3>
+<input id="requestSearch" class="search" placeholder="Search unit or room number..." oninput="render()">
+<div id="requestList"></div>
+</div>
+</section>
+
+<section id="workorders" class="hidden">
+<div class="card"><h3>🔧 Work Orders</h3>
+<div class="row"><input id="woUnit" placeholder="Unit / common area"><input id="woAssigned" placeholder="Assigned to"></div>
+<input id="woTitle" placeholder="Work description">
+<select id="woStatus"><option>Open</option><option>In Progress</option><option>Completed</option></select>
+<textarea id="woNotes" placeholder="Notes / materials used..."></textarea>
+<button class="primary" onclick="addWorkOrder()">Create Work Order</button>
+</div>
+<div class="card"><div id="woList"></div></div>
+</section>
+
+<section id="suppliers" class="hidden">
+<div class="card"><h3>🏪 Suppliers</h3>
+<input id="supName" placeholder="Supplier name">
+<div class="row"><input id="supPhone" placeholder="Phone"><input id="supEmail" placeholder="Email"></div>
+<input id="supNotes" placeholder="Products / notes">
+<button class="primary" onclick="addSupplier()">Save Supplier</button>
+</div>
+<div class="card"><div id="supplierList"></div></div>
+</section>
+
+<section id="add" class="hidden">
+<div class="card"><h3>➕ Add Material</h3>
+<label>Item Name</label><input id="name" placeholder="e.g. LED Bulb 9W">
+<label>Category</label><select id="cat"><option>Plumbing</option><option>Electrical</option><option>HVAC</option><option>Painting</option><option>Drywall</option><option>Hardware</option><option>Cleaning</option><option>Safety</option><option>Tools</option><option>Other</option></select>
+<div class="row"><div><label>Quantity</label><input id="stock" type="number" min="0" placeholder="0"></div><div><label>Unit</label><input id="unit" placeholder="pcs, box, m, L"></div></div>
+<div class="row"><div><label>Minimum Stock</label><input id="min" type="number" min="0" placeholder="5"></div><div><label>Unit Cost ($)</label><input id="cost" type="number" min="0" step=".01" placeholder="0.00"></div></div>
+<label>Storage Location</label><input id="loc" placeholder="Maintenance Room">
+<button class="primary" onclick="addItem()">Save Material</button>
+</div>
+
+<div class="card"><h3>🏠 Add Unit</h3>
+<div class="three"><input id="unitNo" placeholder="Unit #"><input id="unitRoom" placeholder="Room # (e.g. Kitchen)"><input id="unitFloor" placeholder="Floor"></div>
+<input id="unitTenant" placeholder="Tenant / occupant">
+<input id="unitNotes" placeholder="Notes">
+<button class="primary" onclick="addUnit()">Save Unit</button>
+</div>
+</section>
+
+<section id="reports" class="hidden">
+<div id="cloudBar" style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:10px;margin-bottom:12px">
+<b>☁️ Cloud Sync</b><div class="mini">Sync the same building data across your devices.</div>
+<input id="sbUrl" placeholder="Supabase Project URL">
+<input id="sbKey" placeholder="Supabase anon/publishable key">
+<div class="actions" style="justify-content:flex-start">
+<button class="primary" onclick="connectCloud()">Connect Cloud</button>
+<button class="secondary" onclick="cloudPull()">☁️ Pull</button>
+<button class="secondary" onclick="cloudPush()">⬆️ Save to Cloud</button>
+</div>
+<div id="cloudStatus" class="mini" style="color:#92400e">Cloud not connected — local storage is active.</div>
+</div>
+
+<div class="card"><h3>📊 Building Summary</h3><div id="summary"></div></div>
+<div class="card"><h3>💾 Backup & Restore</h3><p class="muted">Export regularly before changing phones or clearing Safari data.</p>
+<button class="primary" onclick="exportData()">Export Backup</button>
+<button class="secondary" onclick="importData()">Import Backup</button>
+<input id="file" type="file" accept=".json" class="hidden" onchange="loadBackup(event)">
+</div>
+<div class="card"><h3>🧹 Data</h3><button class="danger" onclick="clearAll()">Delete All App Data</button></div>
+</section>
+</main>
+
+<script>
+const KEY='buildingSuperProV2';
+let db=JSON.parse(localStorage.getItem(KEY)||'null')||{items:[],units:[],requests:[],workorders:[],suppliers:[],activity:[]};
+let cloudTimer=null;
+const save=()=>{
+ localStorage.setItem(KEY,JSON.stringify(db));
+ if(cloudReady()){clearTimeout(cloudTimer);cloudTimer=setTimeout(()=>cloudPush().catch(()=>{}),1200);}
+};
+function log(t){db.activity.unshift(new Date().toLocaleString()+" — "+t);db.activity=db.activity.slice(0,60);save()}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function show(id,btn){document.querySelectorAll('main section').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden');document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');render()}
+
+function addItem(){
+ const get=id=>document.getElementById(id);
+ const n=get('name').value.trim();
+ if(!n){alert('Enter an item name.');get('name').focus();return;}
+ const x={
+   id:Date.now(),
+   name:n,
+   cat:get('cat').value,
+   stock:Number(get('stock').value)||0,
+   unit:get('unit').value.trim()||'pcs',
+   min:Number(get('min').value)||0,
+   loc:get('loc').value.trim()||'Storage',
+   cost:Number(get('cost').value)||0
+ };
+ db.items.push(x);
+ save();
+ log('Added material: '+x.name);
+ ['name','stock','unit','min','loc','cost'].forEach(id=>get(id).value='');
+ render();
+ alert('Material saved successfully.');
+}
+function change(id,delta){const x=db.items.find(i=>i.id===id);if(!x)return;x.stock=Math.max(0,x.stock+delta);log((delta>0?'Received ':'Used ')+Math.abs(delta)+' '+x.unit+' — '+x.name);save();render()}
+function removeItem(id){const x=db.items.find(i=>i.id===id);if(x&&confirm('Delete '+x.name+'?')){db.items=db.items.filter(i=>i.id!==id);log('Deleted material: '+x.name);save();render()}}
+function addUnit(){
+ const get=id=>document.getElementById(id);
+ const no=get('unitNo').value.trim();
+ if(!no){alert('Enter a unit number.');get('unitNo').focus();return;}
+ const x={
+   id:Date.now(),
+   no,
+   room:get('unitRoom').value.trim(),
+   floor:get('unitFloor').value.trim(),
+   tenant:get('unitTenant').value.trim(),
+   notes:get('unitNotes').value.trim()
+ };
+ db.units.push(x);
+ log('Added unit '+x.no+(x.room?' / '+x.room:''));
+ save();
+ ['unitNo','unitRoom','unitFloor','unitTenant','unitNotes'].forEach(id=>get(id).value='');
+ render();
+ alert('Unit saved successfully.');
+}
+function removeUnit(id){db.units=db.units.filter(x=>x.id!==id);log('Removed unit');save();render()}
+
+function addRequest(prefillUnit='',prefillRoom=''){
+ const get=id=>document.getElementById(id);
+ const unit=prefillUnit || get('reqUnit').value.trim();
+ const room=prefillRoom || (get('reqRoom') ? get('reqRoom').value.trim() : '');
+ const title=get('reqTitle').value.trim();
+ if(!unit){alert('Enter a unit number.');return;}
+ if(!title){alert('Enter the maintenance problem.');get('reqTitle').focus();return;}
+ const x={
+   id:Date.now(),
+   unit,
+   room,
+   tenant:get('reqTenant').value.trim(),
+   title,
+   priority:get('reqPriority').value,
+   notes:get('reqNotes').value.trim(),
+   status:'Open',
+   created:new Date().toLocaleString()
+ };
+ db.requests.unshift(x);
+ log('New maintenance request: Unit '+unit+(room?' / '+room:'')+' — '+title);
+ save();
+ ['reqUnit','reqRoom','reqTenant','reqTitle','reqNotes'].forEach(id=>{
+   const e=get(id); if(e)e.value='';
+ });
+ render();
+}
+function reqStatus(id){const x=db.requests.find(i=>i.id===id);if(!x)return;x.status=x.status==='Open'?'In Progress':x.status==='In Progress'?'Completed':'Open';log('Request '+x.id+' changed to '+x.status);save();render()}
+function deleteReq(id){db.requests=db.requests.filter(x=>x.id!==id);save();render()}
+
+function goToRequest(unit,room=''){
+ const reqTab=[...document.querySelectorAll('.tabs button')].find(b=>b.textContent.includes('Requests'));
+ if(reqTab) show('requests',reqTab);
+ document.getElementById('reqUnit').value=unit;
+ document.getElementById('reqRoom').value=room;
+ const match=db.units.find(x=>String(x.no)===String(unit) && String(x.room||'')===String(room||''));
+ if(match) document.getElementById('reqTenant').value=match.tenant||'';
+ document.getElementById('reqTitle').focus();
+}
+function addWorkOrder(){
+ const title=woTitle.value.trim();if(!title)return alert('Enter the work description.');
+ const x={id:Date.now(),unit:woUnit.value||'Common Area',assigned:woAssigned.value,title,status:woStatus.value,notes:woNotes.value,created:new Date().toLocaleString()};
+ db.workorders.unshift(x);log('Created work order: '+title);save();['woUnit','woAssigned','woTitle','woNotes'].forEach(id=>document.getElementById(id).value='');render()
+}
+function woNext(id){const x=db.workorders.find(i=>i.id===id);if(!x)return;x.status=x.status==='Open'?'In Progress':x.status==='In Progress'?'Completed':'Open';log('Work order changed to '+x.status);save();render()}
+function deleteWO(id){db.workorders=db.workorders.filter(x=>x.id!==id);save();render()}
+
+function addSupplier(){
+ const n=supName.value.trim();if(!n)return alert('Enter supplier name.');
+ db.suppliers.push({id:Date.now(),name:n,phone:supPhone.value,email:supEmail.value,notes:supNotes.value});log('Added supplier: '+n);save();['supName','supPhone','supEmail','supNotes'].forEach(id=>document.getElementById(id).value='');render()
+}
+function deleteSup(id){db.suppliers=db.suppliers.filter(x=>x.id!==id);save();render()}
+
+function render(){
+ const lows=db.items.filter(x=>x.stock<=x.min), out=db.items.filter(x=>x.stock===0);
+ total.textContent=db.items.length;low.textContent=lows.length;openReq.textContent=db.requests.filter(x=>x.status!=='Completed').length;openWO.textContent=db.workorders.filter(x=>x.status!=='Completed').length;
+ const attention=[...lows.map(x=>'📦 Reorder '+x.name+' ('+x.stock+' '+x.unit+')'),...db.requests.filter(x=>x.status!=='Completed').slice(0,4).map(x=>'🛠 '+x.priority+' request: '+x.title),...db.workorders.filter(x=>x.status!=='Completed').slice(0,4).map(x=>'🔧 '+x.status+': '+x.title)];
+ document.getElementById('attention').innerHTML=attention.length?attention.slice(0,10).map(x=>'<div class="item"><small>'+esc(x)+'</small></div>').join(''):'<p class="empty">Nothing needs attention.</p>';
+ document.getElementById('activity').innerHTML=db.activity.slice(0,8).map(x=>'<div class="item"><small>'+esc(x)+'</small></div>').join('')||'<p class="empty">No activity yet.</p>';
+
+ const q=(document.getElementById('search').value||'').toLowerCase(),
+       f=document.getElementById('filter').value,
+       sf=document.getElementById('stockFilter').value;
+ let list=db.items.filter(x=>(!q||x.name.toLowerCase().includes(q)||x.loc.toLowerCase().includes(q))&&(!f||x.cat===f)&&(!sf||(sf==='low'&&x.stock<=x.min)||(sf==='out'&&x.stock===0)));
+ document.getElementById('items').innerHTML=list.length?list.map(x=>`<div class="item"><div><b>${esc(x.name)}</b><br><small>${esc(x.cat)} · ${esc(x.loc)} · $${x.cost.toFixed(2)}/${esc(x.unit)}</small><br><span class="badge ${x.stock===0?'out':x.stock<=x.min?'low':''}">${x.stock} ${esc(x.unit)}${x.stock<=x.min?' · REORDER':''}</span></div><div class="actions"><button onclick="change(${x.id},1)">＋</button><button onclick="change(${x.id},-1)">−</button><button class="danger" onclick="removeItem(${x.id})">Delete</button></div></div>`).join(''):'<p class="empty">No materials found.</p>';
+
+ const uq=(document.getElementById('unitSearch')?.value||'').toLowerCase();
+ const filteredUnits=db.units.filter(x=>{
+   const text=[x.no,x.room,x.floor,x.tenant,x.notes].join(' ').toLowerCase();
+   return !uq || text.includes(uq);
+ });
+ document.getElementById('unitList').innerHTML=filteredUnits.length?filteredUnits.map(x=>`<div class="item"><div>
+ <b>Unit ${esc(x.no)}</b> ${x.room?`<span class="badge blue">Room: ${esc(x.room)}</span>`:''} ${x.floor?`<span class="badge gray">Floor ${esc(x.floor)}</span>`:''}
+ <br><small>${esc(x.tenant||'No tenant')} · ${esc(x.notes||'')}</small>
+ </div><div class="actions"><button class="success" onclick="goToRequest('${String(x.no).replace(/'/g,"\\'")}','${String(x.room||'').replace(/'/g,"\\'")}')">＋ Request</button><button class="danger" onclick="removeUnit(${x.id})">Delete</button></div></div>`).join(''):'<p class="empty">No matching units.</p>';
+
+ const rq=(document.getElementById('requestSearch')?.value||'').toLowerCase();
+ const filteredReq=db.requests.filter(x=>[x.unit,x.room,x.tenant,x.title,x.notes].join(' ').toLowerCase().includes(rq));
+ document.getElementById('requestList').innerHTML=filteredReq.length?filteredReq.map(x=>`<div class="item"><div><b>${esc(x.title)}</b><br><small>Unit ${esc(x.unit)} ${x.room?'· Room '+esc(x.room):''} · ${esc(x.tenant)} · ${esc(x.created)}</small><br><span class="badge ${x.priority==='Emergency'?'out':x.priority==='Urgent'?'low':'blue'}">${esc(x.priority)} · ${esc(x.status)}</span><br><small>${esc(x.notes)}</small></div><div class="actions"><button class="success" onclick="reqStatus(${x.id})">Next</button><button class="danger" onclick="deleteReq(${x.id})">Delete</button></div></div>`).join(''):'<p class="empty">No matching maintenance requests.</p>';
+
+ document.getElementById('woList').innerHTML=db.workorders.length?db.workorders.map(x=>`<div class="item"><div><b>${esc(x.title)}</b><br><small>${esc(x.unit)} · Assigned: ${esc(x.assigned||'Unassigned')} · ${esc(x.created)}</small><br><span class="badge ${x.status==='Completed'?'':'blue'}">${esc(x.status)}</span><br><small>${esc(x.notes)}</small></div><div class="actions"><button class="success" onclick="woNext(${x.id})">Next</button><button class="danger" onclick="deleteWO(${x.id})">Delete</button></div></div>`).join(''):'<p class="empty">No work orders.</p>';
+
+ document.getElementById('supplierList').innerHTML=db.suppliers.length?db.suppliers.map(x=>`<div class="item"><div><b>${esc(x.name)}</b><br><small>${esc(x.phone)} · ${esc(x.email)}</small><br><small>${esc(x.notes)}</small></div><button class="danger" onclick="deleteSup(${x.id})">Delete</button></div>`).join(''):'<p class="empty">No suppliers added.</p>';
+
+ const qty=db.items.reduce((a,x)=>a+x.stock,0), value=db.items.reduce((a,x)=>a+x.stock*x.cost,0);
+ document.getElementById('summary').innerHTML=`<div class="grid"><div><b>${db.items.length}</b><br><small>Materials</small></div><div><b>${qty}</b><br><small>Total quantity</small></div><div><b>$${value.toFixed(2)}</b><br><small>Estimated stock value</small></div><div><b>${db.units.length}</b><br><small>Units</small></div><div><b>${db.requests.length}</b><br><small>Requests</small></div><div><b>${db.workorders.length}</b><br><small>Work orders</small></div></div>`;
+}
+function exportData(){const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='building-superintendent-backup.json';a.click();URL.revokeObjectURL(a.href)}
+function importData(){document.getElementById('file').click()}
+function loadBackup(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.items||!d.activity)throw 0;db={items:d.items||[],units:d.units||[],requests:d.requests||[],workorders:d.workorders||[],suppliers:d.suppliers||[],activity:d.activity||[]};save();render();alert('Backup restored.')}catch{alert('Invalid backup file.')}};r.readAsText(file)}
+function clearAll(){if(confirm('Delete ALL inventory, units, requests, work orders and suppliers? This cannot be undone unless you have a backup.')){localStorage.removeItem(KEY);location.reload()}}
+let cloud={url:localStorage.getItem('sbUrl')||'',key:localStorage.getItem('sbKey')||''};
+function cloudReady(){return cloud.url&&cloud.key&&/^https:\/\/.+/.test(cloud.url)}
+function cloudStatus(t,ok=false){const e=document.getElementById('cloudStatus');if(e){e.textContent=t;e.style.color=ok?'#166534':'#92400e'}}
+function connectCloud(){
+ cloud.url=document.getElementById('sbUrl').value.trim().replace(/\/$/,'');
+ cloud.key=document.getElementById('sbKey').value.trim();
+ localStorage.setItem('sbUrl',cloud.url);localStorage.setItem('sbKey',cloud.key);
+ if(!cloudReady())return cloudStatus('Enter a valid Supabase URL and anon/publishable key.');
+ cloudStatus('Testing cloud connection…');cloudPull();
+}
+function headers(){return {'apikey':cloud.key,'Authorization':'Bearer '+cloud.key,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'}}
+async function cloudPull(){
+ if(!cloudReady())return cloudStatus('Connect your Supabase project first.');
+ try{
+  const r=await fetch(cloud.url+'/rest/v1/building_data?id=eq.1&select=payload',{headers:headers()});
+  if(!r.ok)throw Error(await r.text());
+  const rows=await r.json();
+  if(!rows.length)return cloudStatus('Cloud connected. No cloud backup exists yet.',true);
+  if(confirm('Cloud data found. Replace the data on this device with the cloud copy?')){
+   db=JSON.parse(rows[0].payload);save();render();
+  }
+  cloudStatus('Cloud connected.',true);
+ }catch(e){cloudStatus('Cloud connection failed. Check your Supabase setup.')}
+}
+async function cloudPush(){
+ if(!cloudReady())return cloudStatus('Connect your Supabase project first.');
+ try{
+  const r=await fetch(cloud.url+'/rest/v1/building_data?on_conflict=id',{
+   method:'POST',headers:headers(),body:JSON.stringify({id:1,payload:JSON.stringify(db)})
+  });
+  if(!r.ok)throw Error(await r.text());
+  cloudStatus('Saved to cloud successfully.',true);
+ }catch(e){cloudStatus('Could not save. Check your Supabase table and policies.')}
+}
+if(cloud.url){document.getElementById('sbUrl').value=cloud.url;document.getElementById('sbKey').value=cloud.key}
+
+render();
+</script>
+</body>
+</html>
